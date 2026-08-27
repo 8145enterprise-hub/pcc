@@ -1,0 +1,11 @@
+{
+  "rooms": [
+    {
+      "id": "channel-1",
+      "name": "Channel 1",
+      "description": "Main discussion room",
+      "createdAt": "2026-08-27T12:00:00.000Z",
+      "isPublic": true
+    }
+  ]
+}
