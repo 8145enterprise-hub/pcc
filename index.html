@@ -1,1 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private Communication Channel (PCC) | One UI 8.5 Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl.js/1.0.3/nacl.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl.js/1.0.3/nacl-util.min.js"></script>
+    <style>
+        /* ==========================================================================
+           SAMSUNG ONE UI 8.5 DARK THEME (COMFORT, TACTILITY & REACHABILITY)
+           ========================================================================== */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+        :root {
+            /* --- One UI Color Palette --- */
+            --oui-bg-canvas: #0c0c0f;          /* OLED pure charcoal black */
+            --oui-bg-card: #1c1c1e;            /* One UI Dark container card */
+            --oui-bg-card-hover: #2c2c2e;      /* Touch focus hover state */
+            --oui-bg-active: rgba(255, 255, 255, 0.08);
+            
+            /* --- One UI Borders & Corner Radii --- */
+            --oui-border-light: rgba(255, 255, 255, 0.08);
+            --oui-border-focus: #007aff;       /* Samsung Accent Blue */
+            --oui-radius-container: 26px;     /* Distinctly rounded containers */
+            --oui-radius-card: 20px;          /* Soft inner nested cards */
+            --oui-radius-pill: 9999px;         /* Tactile rounded pill elements */
+            
+            /* --- Typography & Accents --- */
+            --oui-text-primary: #f2f2f7;       /* Soft light white */
+            --oui-text-secondary: #8e8e93;     /* Comfort neutral grey */
+            --oui-text-muted: #545456;         /* Subdued grey */
+            --oui-accent-blue: #007aff;        /* Classic Samsung Blue */
+            --oui-accent-green: #34c759;       /* Positive Accent Green */
+            --oui-accent-red: #ff3b30;         /* Alert Red */
+
+            /* --- Motion & Transitions --- */
+            --oui-transition-comfort: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        /* --- Base & Scrollbars Setup --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--oui-bg-canvas);
+            color: var(--oui-text-primary);
+            overflow: hidden;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: var(--oui-radius-pill);
+            transition: var(--oui-transition-comfort);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--oui-accent-blue);
+        }
+
+        /* --- Global Layout --- */
+        .container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: transparent;
+            padding: 1rem; /* Margins around the screen for the Samsung Island layout */
+            gap: 1rem;
+        }
+        
+        /* --- Header (One UI Title / Banner style) --- */
+        .header {
+            background: transparent;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--oui-text-primary);
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 1.25rem;
+            align-items: center;
+        }
+        
+        .user-info {
+            font-size: 0.9rem;
+            color: var(--oui-text-secondary);
+        }
+
+        .user-info strong {
+            color: var(--oui-text-primary);
+            font-weight: 600;
+            background: var(--oui-bg-card);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--oui-radius-pill);
+            border: 1px solid var(--oui-border-light);
+        }
+        
+        /* --- Tactile Pill Buttons --- */
+        button {
+            background: var(--oui-accent-blue);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--oui-radius-pill);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: var(--oui-transition-comfort);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.15);
+        }
+        
+        button:hover {
+            transform: scale(1.02);
+            filter: brightness(1.1);
+            box-shadow: 0 6px 18px rgba(0, 122, 255, 0.25);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        button.danger {
+            background: var(--oui-accent-red);
+            box-shadow: 0 4px 12px rgba(255, 59, 48, 0.15);
+        }
+        
+        button.danger:hover {
+            box-shadow: 0 6px 18px rgba(255, 59, 48, 0.25);
+        }
+        
+        button.success {
+            background: var(--oui-accent-blue); /* Streamlined success with Samsung blue */
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.15);
+        }
+
+        button.secondary {
+            background: var(--oui-bg-card);
+            border: 1px solid var(--oui-border-light);
+            color: var(--oui-text-secondary);
+            box-shadow: none;
+        }
+
+        button.secondary:hover {
+            color: var(--oui-text-primary);
+            background: var(--oui-bg-card-hover);
+        }
+        
+        /* --- Login Screen --- */
+        .login-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100vh;
+            background: var(--oui-bg-canvas);
+            padding: 1.5rem;
+        }
+        
+        .login-box {
+            background: var(--oui-bg-card);
+            border-radius: var(--oui-radius-container);
+            border: 1px solid var(--oui-border-light);
+            padding: 3rem 2.5rem;
+            width: 100%;
+            max-width: 440px;
+            transition: var(--oui-transition-comfort);
+            animation: zoomIn 0.35s cubic-bezier(0.2, 0, 0, 1);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        .login-box h2 {
+            margin-bottom: 2.25rem;
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--oui-text-primary);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.6rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--oui-text-secondary);
+            letter-spacing: 0.3px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 0.85rem 1.25rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid transparent;
+            border-radius: var(--oui-radius-pill); /* Beautiful One UI Pill input style */
+            color: var(--oui-text-primary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: var(--oui-transition-comfort);
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--oui-border-focus);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15);
+        }
+
+        .form-group input::placeholder {
+            color: var(--oui-text-muted);
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 2rem;
+        }
+        
+        .btn-group button {
+            flex: 1;
+        }
+        
+        .error {
+            color: var(--oui-accent-red);
+            font-size: 0.9rem;
+            margin-top: 1.25rem;
+            padding: 0.8rem 1.25rem;
+            background: rgba(255, 59, 48, 0.08);
+            border: 1px solid rgba(255, 59, 48, 0.15);
+            border-radius: var(--oui-radius-card);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .success {
+            color: var(--oui-accent-green);
+            font-size: 0.9rem;
+            margin-top: 1.25rem;
+            padding: 0.8rem 1.25rem;
+            background: rgba(52, 199, 89, 0.08);
+            border: 1px solid rgba(52, 199, 89, 0.15);
+            border-radius: var(--oui-radius-card);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* --- Main App Screen (Samsung Nested Islands) --- */
+        .main-screen {
+            display: flex;
+            width: 100%;
+            height: calc(100vh - 100px); /* Fill screen comfortable viewport */
+            background: transparent;
+            gap: 1rem;
+        }
+        
+        /* --- Sidebar Island --- */
+        .sidebar {
+            width: 300px;
+            background: var(--oui-bg-card);
+            border-radius: var(--oui-radius-container);
+            border: 1px solid var(--oui-border-light);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 1rem;
+            gap: 1.25rem;
+        }
+        
+        .sidebar-section {
+            padding: 0.75rem;
+        }
+
+        .sidebar-section:not(:last-child) {
+            border-bottom: 1px solid var(--oui-border-light);
+            padding-bottom: 1.25rem;
+        }
+        
+        .sidebar-section h3 {
+            font-size: 0.8rem;
+            color: var(--oui-text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+        }
+        
+        /* --- Room items list --- */
+        .room-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .room-item {
+            padding: 0.75rem 1.1rem;
+            border-radius: var(--oui-radius-pill); /* Pill shaped active items */
+            cursor: pointer;
+            transition: var(--oui-transition-comfort);
+            color: var(--oui-text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+        }
+
+        .room-item::before {
+            content: "#";
+            margin-right: 0.6rem;
+            color: var(--oui-text-muted);
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        
+        .room-item:hover {
+            background: var(--oui-bg-card-hover);
+            color: var(--oui-text-primary);
+        }
+        
+        .room-item.active {
+            background: var(--oui-accent-blue);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
+        }
+
+        .room-item.active::before {
+            color: rgba(255, 255, 255, 0.85);
+        }
+        
+        .add-room-btn {
+            width: 100%;
+            margin-top: 0.75rem;
+        }
+        
+        /* --- Active Users --- */
+        #usersList {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        #usersList div {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            color: var(--oui-text-secondary);
+            font-size: 0.9rem;
+            padding: 0.5rem 0.8rem;
+            border-radius: var(--oui-radius-card);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            font-weight: 500;
+        }
+
+        #usersList div::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--oui-accent-blue);
+            border-radius: 50%;
+        }
+        
+        /* --- Chat Area Island --- */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--oui-bg-card);
+            border-radius: var(--oui-radius-container);
+            border: 1px solid var(--oui-border-light);
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            padding: 1.5rem 2.25rem;
+            background: rgba(25, 25, 28, 0.4);
+            border-bottom: 1px solid var(--oui-border-light);
+            font-weight: 700;
+            color: var(--oui-text-primary);
+            font-size: 1.15rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .chat-header span {
+            color: var(--oui-accent-blue);
+            font-weight: 800;
+        }
+        
+        /* --- Messages Panel --- */
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.75rem 2.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 60%;
+            animation: slideUp 0.25s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.own {
+            align-self: flex-end;
+        }
+        
+        .message-bubble {
+            padding: 0.85rem 1.25rem;
+            border-radius: 20px; /* Distinctly rounded message cards */
+            word-wrap: break-word;
+            font-size: 0.95rem;
+            line-height: 1.45;
+        }
+        
+        .message-bubble.own {
+            background: var(--oui-accent-blue);
+            color: white;
+            border-bottom-right-radius: 4px; /* One UI unique bubble corner styles */
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.15);
+        }
+        
+        .message-bubble.other {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--oui-border-light);
+            color: var(--oui-text-primary);
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message-meta {
+            font-size: 0.75rem;
+            margin-top: 0.4rem;
+            color: var(--oui-text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0 0.25rem;
+        }
+        
+        .message.own .message-meta {
+            justify-content: flex-end;
+            text-align: right;
+        }
+        
+        /* --- Message Input Area --- */
+        .input-area {
+            padding: 1.25rem 2.25rem;
+            background: rgba(25, 25, 28, 0.4);
+            border-top: 1px solid var(--oui-border-light);
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .input-area input {
+            flex: 1;
+            padding: 0.85rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid transparent;
+            border-radius: var(--oui-radius-pill); /* Pill input style */
+            color: var(--oui-text-primary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: var(--oui-transition-comfort);
+        }
+        
+        .input-area input:focus {
+            outline: none;
+            border-color: var(--oui-border-focus);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15);
+        }
+
+        .input-area input::placeholder {
+            color: var(--oui-text-muted);
+        }
+        
+        .input-area button {
+            padding: 0.85rem 1.75rem;
+            border-radius: var(--oui-radius-pill);
+        }
+        
+        /* --- Modals --- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: var(--oui-transition-comfort);
+        }
+        
+        .modal.active {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .modal-content {
+            background-color: var(--oui-bg-card);
+            border: 1px solid var(--oui-border-light);
+            padding: 2.5rem;
+            border-radius: var(--oui-radius-container); /* Highly rounded dialogues */
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+            transform: scale(0.96);
+            transition: var(--oui-transition-comfort);
+        }
+        
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+        
+        .modal-content h2 {
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--oui-text-primary);
+            letter-spacing: -0.3px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 2rem;
+            justify-content: flex-end;
+        }
+        
+        .modal-buttons button {
+            min-width: 110px;
+        }
+        
+        /* --- Empty states --- */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--oui-text-secondary);
+            text-align: center;
+            padding: 3rem;
+            gap: 1rem;
+        }
+
+        .empty-state::before {
+            content: '💬';
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state h3 {
+            color: var(--oui-text-primary);
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .empty-state p {
+            font-size: 0.95rem;
+            max-width: 320px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-box">
+            <h2>Private Communication Channel</h2>
+            
+            <!-- Setup Section -->
+            <div id="setupSection" style="display: none;">
+                <div class="form-group">
+                    <label>GitHub Token (ghp_...)</label>
+                    <input type="password" id="githubToken" placeholder="Your GitHub Personal Access Token">
+                </div>
+                <div class="form-group">
+                    <label>Repository (username/repo)</label>
+                    <input type="text" id="githubRepo" placeholder="e.g., myusername/my-chat-app">
+                </div>
+                <button id="saveConfigBtn" style="width: 100%;">Save Configuration</button>
+                <button id="backToLoginBtn" class="secondary" style="width: 100%; margin-top: 0.75rem;">Back to Login</button>
+                <div id="configMessage"></div>
+            </div>
+            
+            <!-- Login Section -->
+            <div id="loginSection">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="loginUsername" placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter password">
+                </div>
+                <div class="btn-group">
+                    <button id="loginBtn" class="success" style="width: 100%;">Login</button>
+                </div>
+                <button id="githubConfigBtn" class="secondary" style="width: 100%; margin-top: 0.75rem;">Configure Connection</button>
+                <div id="loginMessage"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main App -->
+    <div id="mainApp" class="container" style="display: none;">
+        <div class="header">
+            <h1>💬 Private Communication Channel</h1>
+            <div class="header-right">
+                <div class="user-info">
+                    Logged in as: <strong id="currentUser"></strong>
+                </div>
+                <button id="logoutBtn" class="danger">Logout</button>
+            </div>
+        </div>
+        
+        <div class="main-screen">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3>Rooms</h3>
+                    <ul class="room-list" id="roomList"></ul>
+                    <button class="add-room-btn success" id="addRoomBtn">+ Add Room</button>
+                </div>
+                
+                <div class="sidebar-section" style="margin-top: auto;">
+                    <h3>Active Users</h3>
+                    <div id="usersList"></div>
+                </div>
+            </div>
+            
+            <!-- Chat Area -->
+            <div class="chat-area">
+                <div class="chat-header" id="chatHeader">Select a room</div>
+                <div class="messages-container" id="messagesContainer">
+                    <div class="empty-state">
+                        <h3>No Active Room</h3>
+                        <p>Select or create a room from the sidebar to begin communicating via the PCC.</p>
+                    </div>
+                </div>
+                <div class="input-area" id="inputArea" style="display: none;">
+                    <input type="text" id="messageInput" placeholder="Type a message...">
+                    <button id="sendBtn">Send Message</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <h2>Change Password</h2>
+            <div class="form-group">
+                <label>Current Password</label>
+                <input type="password" id="currentPassword" placeholder="Your current password">
+            </div>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="newPassword" placeholder="New password">
+            </div>
+            <div class="form-group">
+                <label>Confirm New Password</label>
+                <input type="password" id="confirmPassword" placeholder="Confirm password">
+            </div>
+            <div id="passwordChangeMessage"></div>
+            <div class="modal-buttons">
+                <button id="cancelPasswordBtn" class="secondary">Cancel</button>
+                <button id="updatePasswordBtn" class="success">Update</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="addRoomModal" class="modal">
+        <div class="modal-content">
+            <h2>Add Room</h2>
+            <div class="form-group">
+                <label>Room Name</label>
+                <input type="text" id="roomName" placeholder="e.g., General, DevOps, etc">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" id="roomDescription" placeholder="Room description (optional)">
+            </div>
+            <div id="addRoomMessage"></div>
+            <div class="modal-buttons">
+                <button id="cancelRoomBtn" class="secondary">Cancel</button>
+                <button id="createRoomBtn" class="success">Create</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="firstLoginModal" class="modal">
+        <div class="modal-content">
+            <h2>Set Your Password</h2>
+            <p style="color: var(--oui-text-secondary); margin-bottom: 1.25rem; font-size: 0.95rem; line-height: 1.5;">This is your first login. Please set a new password to initialize your account.</p>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="firstNewPassword" placeholder="Create a strong password">
+            </div>
+            <div class="form-group">
+                <label>Confirm Password</label>
+                <input type="password" id="firstConfirmPassword" placeholder="Confirm password">
+            </div>
+            <div id="firstLoginMessage"></div>
+            <div class="modal-buttons">
+                <button id="setPasswordBtn" class="success" style="width: 100%;">Set Password & Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== CONFIG =====
+        const HARDCODED_ADMIN = {
+            username: 'beuser',
+            defaultPassword: 'test123'
+        };
+        
+        // ===== STATE =====
+        let appState = {
+            githubToken: localStorage.getItem('githubToken') || '',
+            githubRepo: localStorage.getItem('githubRepo') || '',
+            currentUser: null,
+            currentRoom: null,
+            users: [],
+            rooms: [],
+            messages: {}
+        };
+        
+        // ===== PASSWORD HASHING =====
+        function hashPassword(password, salt = 'github-chat-app-salt-2025') {
+            // Simple hashing for demo (not production-grade)
+            let hash = 0;
+            const input = password + salt;
+            for (let i = 0; i < input.length; i++) {
+                const char = input.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return Math.abs(hash).toString(16);
+        }
+        
+        // ===== BASE64 UTF-8 DECODER =====
+        function decodeBase64Utf8(base64Str) {
+            const cleanBase64 = base64Str.replace(/\s/g, '');
+            const binString = atob(cleanBase64);
+            const bytes = new Uint8Array(binString.length);
+            for (let i = 0; i < binString.length; i++) {
+                bytes[i] = binString.charCodeAt(i);
+            }
+            return new TextDecoder().decode(bytes);
+        }
+        
+        // ===== GITHUB API =====
+        async function fetchFromGitHub(filename) {
+            if (!appState.githubToken || !appState.githubRepo) {
+                console.warn('fetchFromGitHub cancelled: Token or Repo is empty.');
+                return null;
+            }
+            
+            try {
+                const [owner, repo] = appState.githubRepo.split('/');
+                console.log(`Fetching ${filename} from GitHub repository: ${owner}/${repo}...`);
+                const response = await fetch(
+                    `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`,
+                    {
+                        cache: 'no-store',
+                        headers: {
+                            'Authorization': `token ${appState.githubToken}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                console.log(`GitHub response status for ${filename}:`, response.status, response.statusText);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`JSON metadata received for ${filename}:`, data);
+                    if (data && data.content) {
+                        try {
+                            const decodedText = decodeBase64Utf8(data.content);
+                            console.log(`Successfully decoded content for ${filename}:`, decodedText);
+                            return JSON.parse(decodedText);
+                        } catch (decodeError) {
+                            console.error(`Decoding or Parse Error for ${filename}:`, decodeError);
+                            return null;
+                        }
+                    }
+                    return data;
+                }
+                return null;
+            } catch (error) {
+                console.error('Error fetching from GitHub:', error);
+                return null;
+            }
+        }
+        
+        async function saveToGitHub(filename, content) {
+            if (!appState.githubToken || !appState.githubRepo) {
+                alert('GitHub not configured');
+                return false;
+            }
+            
+            try {
+                const [owner, repo] = appState.githubRepo.split('/');
+                
+                // Safe Base64 encoding supporting UTF-8 characters (like emojis/accents)
+                const jsonString = JSON.stringify(content, null, 2);
+                const utf8Bytes = new TextEncoder().encode(jsonString);
+                let binString = "";
+                for (let i = 0; i < utf8Bytes.length; i++) {
+                    binString += String.fromCharCode(utf8Bytes[i]);
+                }
+                const base64Content = btoa(binString);
+                
+                // Get current SHA
+                let sha = null;
+                try {
+                    const getResponse = await fetch(
+                        `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`,
+                        {
+                            cache: 'no-store',
+                            headers: {
+                                'Authorization': `token ${appState.githubToken}`,
+                                'Accept': 'application/vnd.github.v3+json'
+                            }
+                        }
+                    );
+                    if (getResponse.ok) {
+                        const data = await getResponse.json();
+                        sha = data.sha;
+                    }
+                } catch (e) {}
+                
+                const putResponse = await fetch(
+                    `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${appState.githubToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: `Update ${filename}`,
+                            content: base64Content,
+                            ...(sha && { sha })
+                        })
+                    }
+                );
+                
+                return putResponse.ok;
+            } catch (error) {
+                console.error('Error saving to GitHub:', error);
+                return false;
+            }
+        }
+        
+        // ===== USER MANAGEMENT =====
+        async function loadUsers() {
+            console.log('loadUsers() initiated...');
+            const data = await fetchFromGitHub('users.json');
+            console.log('loadUsers() received data:', data);
+            appState.users = data?.users || [];
+            console.log('appState.users populated:', appState.users);
+            return appState.users;
+        }
+        
+        async function initializeDefaultUsers() {
+            appState.users = [{
+                id: 'user-' + Date.now(),
+                username: HARDCODED_ADMIN.username,
+                passwordHash: '',
+                createdAt: new Date().toISOString(),
+                joinedRooms: ['channel-1']
+            }];
+            await saveToGitHub('users.json', { users: appState.users });
+        }
+        
+        async function initializeDefaultRooms() {
+            appState.rooms = [{
+                id: 'channel-1',
+                name: 'Channel 1',
+                description: 'Main discussion room',
+                createdAt: new Date().toISOString(),
+                isPublic: true
+            }];
+            await saveToGitHub('rooms.json', { rooms: appState.rooms });
+            await saveToGitHub('messages_channel-1.json', { messages: [] });
+        }
+        
+        // ===== ROOMS =====
+        async function loadRooms() {
+            const data = await fetchFromGitHub('rooms.json');
+            appState.rooms = data?.rooms || [];
+            return appState.rooms;
+        }
+        
+        async function loadMessages(roomId) {
+            const filename = `messages_${roomId}.json`;
+            const data = await fetchFromGitHub(filename);
+            appState.messages[roomId] = data?.messages || [];
+            return appState.messages[roomId];
+        }
+        
+        async function addMessage(roomId, text) {
+            if (!appState.currentUser) return;
+            
+            const message = {
+                id: 'msg-' + Date.now(),
+                username: appState.currentUser,
+                text: text,
+                timestamp: new Date().toISOString(),
+                room: roomId
+            };
+            
+            const messages = await loadMessages(roomId);
+            messages.push(message);
+            
+            const filename = `messages_${roomId}.json`;
+            return await saveToGitHub(filename, { messages });
+        }
+        
+        // ===== UI RENDERING =====
+        function renderRooms() {
+            const roomList = document.getElementById('roomList');
+            roomList.innerHTML = '';
+            
+            appState.rooms.forEach(room => {
+                const li = document.createElement('li');
+                li.className = 'room-item' + (appState.currentRoom === room.id ? ' active' : '');
+                li.textContent = room.name;
+                li.onclick = () => selectRoom(room.id);
+                roomList.appendChild(li);
+            });
+        }
+        
+        async function selectRoom(roomId) {
+            appState.currentRoom = roomId;
+            renderRooms();
+            
+            const room = appState.rooms.find(r => r.id === roomId);
+            document.getElementById('chatHeader').innerHTML = `<span>#</span> ${room?.name || 'Chat'}`;
+            document.getElementById('inputArea').style.display = 'flex';
+            
+            await loadMessages(roomId);
+            renderMessages();
+        }
+        
+        function renderMessages() {
+            const container = document.getElementById('messagesContainer');
+            const messages = appState.messages[appState.currentRoom] || [];
+            
+            container.innerHTML = '';
+            messages.forEach(msg => {
+                const div = document.createElement('div');
+                const isOwn = msg.username === appState.currentUser;
+                div.className = 'message' + (isOwn ? ' own' : '');
+                
+                const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                div.innerHTML = `
+                    <div class="message-bubble ${isOwn ? 'own' : 'other'}">
+                        ${!isOwn ? `<strong style="color: var(--oui-accent-blue); font-weight:600; display:block; margin-bottom:0.2rem;">${msg.username}</strong>` : ''}
+                        ${escapeHtml(msg.text)}
+                    </div>
+                    <div class="message-meta">${msg.username} &bull; ${time}</div>
+                `;
+                container.appendChild(div);
+            });
+            
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function renderUsersList() {
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = appState.users
+                .map(u => `<div>${u.username}</div>`)
+                .join('');
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // ===== LOGIN / REGISTER =====
+        async function handleLogin() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const msgDiv = document.getElementById('loginMessage');
+            
+            if (!username || !password) {
+                msgDiv.innerHTML = '<div class="error">Enter username and password</div>';
+                return;
+            }
+            
+            msgDiv.innerHTML = 'Connecting...';
+            
+            try {
+                await loadUsers();
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+            
+            if (!appState.users || appState.users.length === 0) {
+                msgDiv.innerHTML = '<div class="error">Failed to fetch users list from GitHub. Check connection & configuration.</div>';
+                return;
+            }
+            
+            const user = appState.users.find(u => u.username === username);
+            if (!user) {
+                msgDiv.innerHTML = '<div class="error">User not found</div>';
+                return;
+            }
+            
+            // Compare plaintext passwords directly
+            if (user.password === password) {
+                appState.currentUser = username;
+                await loadRooms();
+                showMainApp();
+            } else {
+                msgDiv.innerHTML = '<div class="error">Wrong password</div>';
+            }
+        }
+        
+        async function handleRegister() {
+            // Keep backing handleRegister function for any custom backend setups
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const msgDiv = document.getElementById('loginMessage');
+            
+            if (!username || !password) {
+                msgDiv.innerHTML = '<div class="error">Enter username and password</div>';
+                return;
+            }
+            
+            if (username.length < 3) {
+                msgDiv.innerHTML = '<div class="error">Username must be at least 3 characters</div>';
+                return;
+            }
+            
+            await loadUsers();
+            if (appState.users.find(u => u.username === username)) {
+                msgDiv.innerHTML = '<div class="error">Username already exists</div>';
+                return;
+            }
+            
+            const newUser = {
+                id: 'user-' + Date.now(),
+                username: username,
+                passwordHash: '',
+                createdAt: new Date().toISOString(),
+                joinedRooms: ['channel-1']
+            };
+            
+            appState.users.push(newUser);
+            const saved = await saveToGitHub('users.json', { users: appState.users });
+            if (!saved) {
+                appState.users.pop(); // Revert local state
+                msgDiv.innerHTML = '<div class="error">Failed to save user to GitHub. Check token scope & repository settings.</div>';
+                return;
+            }
+            
+            appState.currentUser = username;
+            showFirstLoginModal();
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+        }
+        
+        // ===== MODALS =====
+        function showFirstLoginModal() {
+            document.getElementById('firstLoginModal').classList.add('active');
+        }
+        
+        async function handleSetPassword() {
+            const newPass = document.getElementById('firstNewPassword').value;
+            const confirmPass = document.getElementById('firstConfirmPassword').value;
+            const msgDiv = document.getElementById('firstLoginMessage');
+            
+            if (!newPass || !confirmPass) {
+                msgDiv.innerHTML = '<div class="error">Fill in all fields</div>';
+                return;
+            }
+            
+            if (newPass !== confirmPass) {
+                msgDiv.innerHTML = '<div class="error">Passwords do not match</div>';
+                return;
+            }
+            
+            if (newPass.length < 6) {
+                msgDiv.innerHTML = '<div class="error">Password must be at least 6 characters</div>';
+                return;
+            }
+            
+            const user = appState.users.find(u => u.username === appState.currentUser);
+            const oldHash = user.passwordHash;
+            user.passwordHash = hashPassword(newPass);
+            const saved = await saveToGitHub('users.json', { users: appState.users });
+            if (!saved) {
+                user.passwordHash = oldHash; // Revert local state
+                msgDiv.innerHTML = '<div class="error">Failed to save password to GitHub. Check connection.</div>';
+                return;
+            }
+            
+            document.getElementById('firstLoginModal').classList.remove('active');
+            await loadRooms();
+            showMainApp();
+        }
+        
+        // ===== MAIN APP =====
+        function showMainApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'flex';
+            document.getElementById('currentUser').textContent = appState.currentUser;
+            renderRooms();
+            renderUsersList();
+            if (appState.rooms.length > 0) {
+                selectRoom(appState.rooms[0].id);
+            }
+        }
+        
+        async function handleSendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            const success = await addMessage(appState.currentRoom, text);
+            if (success) {
+                input.value = '';
+                await loadMessages(appState.currentRoom);
+                renderMessages();
+            }
+        }
+        
+        async function handleChangePassword() {
+            const current = document.getElementById('currentPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+            const msgDiv = document.getElementById('passwordChangeMessage');
+            
+            if (!current || !newPass || !confirm) {
+                msgDiv.innerHTML = '<div class="error">Fill in all fields</div>';
+                return;
+            }
+            
+            const user = appState.users.find(u => u.username === appState.currentUser);
+            if (hashPassword(current) !== user.passwordHash) {
+                msgDiv.innerHTML = '<div class="error">Current password is wrong</div>';
+                return;
+            }
+            
+            if (newPass !== confirm) {
+                msgDiv.innerHTML = '<div class="error">Passwords do not match</div>';
+                return;
+            }
+            
+            user.passwordHash = hashPassword(newPass);
+            const success = await saveToGitHub('users.json', { users: appState.users });
+            
+            if (success) {
+                msgDiv.innerHTML = '<div class="success">Password updated!</div>';
+                setTimeout(() => {
+                    document.getElementById('changePasswordModal').classList.remove('active');
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                    msgDiv.innerHTML = '';
+                }, 1500);
+            }
+        }
+        
+        async function handleAddRoom() {
+            const name = document.getElementById('roomName').value.trim();
+            const desc = document.getElementById('roomDescription').value.trim();
+            const msgDiv = document.getElementById('addRoomMessage');
+            
+            if (!name) {
+                msgDiv.innerHTML = '<div class="error">Room name is required</div>';
+                return;
+            }
+            
+            const roomId = name.toLowerCase().replace(/\s+/g, '-');
+            if (appState.rooms.find(r => r.id === roomId)) {
+                msgDiv.innerHTML = '<div class="error">Room already exists</div>';
+                return;
+            }
+            
+            const newRoom = {
+                id: roomId,
+                name: name,
+                description: desc,
+                createdAt: new Date().toISOString(),
+                isPublic: true
+            };
+            
+            appState.rooms.push(newRoom);
+            const savedRooms = await saveToGitHub('rooms.json', { rooms: appState.rooms });
+            const savedMsgs = await saveToGitHub(`messages_${roomId}.json`, { messages: [] });
+            
+            if (!savedRooms || !savedMsgs) {
+                appState.rooms.pop(); // Revert local state
+                msgDiv.innerHTML = '<div class="error">Failed to save new room to GitHub. Check connection.</div>';
+                return;
+            }
+            
+            msgDiv.innerHTML = '<div class="success">Room created!</div>';
+            setTimeout(() => {
+                document.getElementById('addRoomModal').classList.remove('active');
+                document.getElementById('roomName').value = '';
+                document.getElementById('roomDescription').value = '';
+                msgDiv.innerHTML = '';
+                renderRooms();
+                selectRoom(roomId);
+            }, 1000);
+        }
+        
+        async function handleSaveConfig() {
+            const token = document.getElementById('githubToken').value.trim();
+            const repo = document.getElementById('githubRepo').value.trim();
+            const msgDiv = document.getElementById('configMessage');
+            
+            if (!token || !repo) {
+                msgDiv.innerHTML = '<div class="error">Fill in all fields</div>';
+                return;
+            }
+            
+            appState.githubToken = token;
+            appState.githubRepo = repo;
+            
+            localStorage.setItem('githubToken', token);
+            localStorage.setItem('githubRepo', repo);
+            
+            // Try to load data
+            const users = await loadUsers();
+            const rooms = await loadRooms();
+            
+            if (!users || users.length === 0) {
+                await initializeDefaultUsers();
+                await initializeDefaultRooms();
+                msgDiv.innerHTML = '<div class="success">Configuration saved! Initialized with default data.</div>';
+            } else {
+                msgDiv.innerHTML = '<div class="success">Configuration saved!</div>';
+            }
+            
+            setTimeout(() => {
+                document.getElementById('setupSection').style.display = 'none';
+                document.getElementById('loginSection').style.display = 'block';
+                msgDiv.innerHTML = '';
+            }, 1500);
+        }
+        
+        function handleLogout() {
+            appState.currentUser = null;
+            appState.currentRoom = null;
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginMessage').innerHTML = '';
+        }
+        
+        // ===== EVENT LISTENERS =====
+        document.getElementById('loginBtn').addEventListener('click', handleLogin);
+        document.getElementById('githubConfigBtn').addEventListener('click', () => {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('setupSection').style.display = 'block';
+        });
+        document.getElementById('backToLoginBtn').addEventListener('click', () => {
+            document.getElementById('setupSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+        });
+        document.getElementById('saveConfigBtn').addEventListener('click', handleSaveConfig);
+        
+        document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSendMessage();
+        });
+        
+        document.getElementById('addRoomBtn').addEventListener('click', () => {
+            document.getElementById('addRoomModal').classList.add('active');
+        });
+        document.getElementById('cancelRoomBtn').addEventListener('click', () => {
+            document.getElementById('addRoomModal').classList.remove('active');
+        });
+        document.getElementById('createRoomBtn').addEventListener('click', handleAddRoom);
+        
+        document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+        
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            if (appState.githubToken && appState.githubRepo) {
+                try {
+                    await loadUsers();
+                    await loadRooms();
+                } catch (error) {
+                    console.error('Failed to load data:', error);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
