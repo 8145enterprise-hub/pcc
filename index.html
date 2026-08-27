@@ -625,6 +625,130 @@
             max-width: 320px;
             line-height: 1.5;
         }
+
+        /* ==========================================================================
+           MOBILE RESPONSIVENESS & TOUCH OPTIMIZATIONS (SAMSUNG ONE UI COMFORT)
+           ========================================================================== */
+        .back-rooms-btn {
+            display: none; /* Hidden on desktop */
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.5rem;
+                gap: 0.5rem;
+                height: 100vh;
+            }
+
+            .header {
+                padding: 0.5rem 0.75rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .header-right {
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 0.85rem;
+            }
+
+            .main-screen {
+                height: calc(100vh - 105px); /* Fit comfortable mobile viewport height */
+                gap: 0;
+                position: relative;
+            }
+
+            /* Stack sections on mobile, show/hide using JS classes */
+            .sidebar {
+                width: 100%;
+                display: flex;
+                height: 100%;
+            }
+
+            .chat-area {
+                display: none;
+                width: 100%;
+                height: 100%;
+            }
+
+            /* Mobile Navigation Class Toggles */
+            .main-screen.show-chat .sidebar {
+                display: none;
+            }
+
+            .main-screen.show-chat .chat-area {
+                display: flex;
+            }
+
+            /* Back to rooms navigation button */
+            .back-rooms-btn {
+                display: inline-flex;
+                align-items: center;
+                background: transparent;
+                border: none;
+                color: var(--oui-accent-blue);
+                font-size: 1.05rem;
+                font-weight: 600;
+                cursor: pointer;
+                padding: 0.35rem 0.75rem;
+                margin-right: 0.5rem;
+                border-radius: var(--oui-radius-pill);
+                background: var(--oui-bg-active);
+                border: 1px solid var(--oui-border-light);
+                transition: var(--oui-transition-comfort);
+            }
+
+            .back-rooms-btn:active {
+                background: rgba(255, 255, 255, 0.15);
+            }
+
+            /* Adjust message and input widths for narrow screens */
+            .chat-header {
+                padding: 0.75rem 1rem;
+                font-size: 1.05rem;
+            }
+
+            .messages-container {
+                padding: 1rem;
+                gap: 0.75rem;
+            }
+
+            .message {
+                max-width: 85%; /* Make bubbles comfortable to read */
+            }
+
+            .message-bubble {
+                padding: 0.75rem 1rem;
+                font-size: 0.95rem;
+            }
+
+            .input-area {
+                padding: 0.75rem 1rem;
+                gap: 0.5rem;
+            }
+
+            .input-area input {
+                padding: 0.75rem 1rem;
+                font-size: 0.95rem;
+            }
+
+            /* Adjust login-box padding on smaller screens */
+            .login-box {
+                padding: 2rem 1.5rem;
+            }
+
+            .login-box h2 {
+                font-size: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1004,11 +1128,19 @@
             renderRooms();
             
             const room = appState.rooms.find(r => r.id === roomId);
-            document.getElementById('chatHeader').innerHTML = `<span>#</span> ${room?.name || 'Chat'}`;
+            const backBtnHtml = `<button id="backToRoomsBtn" class="back-rooms-btn" onclick="handleBackToRooms()">&larr; Rooms</button>`;
+            document.getElementById('chatHeader').innerHTML = `${backBtnHtml}<span>#</span> ${room?.name || 'Chat'}`;
             document.getElementById('inputArea').style.display = 'flex';
+            
+            // On mobile, show the chat pane
+            document.querySelector('.main-screen').classList.add('show-chat');
             
             await loadMessages(roomId);
             renderMessages();
+        }
+        
+        function handleBackToRooms() {
+            document.querySelector('.main-screen').classList.remove('show-chat');
         }
         
         function renderMessages() {
@@ -1318,6 +1450,12 @@
         function handleLogout() {
             appState.currentUser = null;
             appState.currentRoom = null;
+            
+            const mainScreen = document.querySelector('.main-screen');
+            if (mainScreen) {
+                mainScreen.classList.remove('show-chat');
+            }
+            
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('mainApp').style.display = 'none';
             document.getElementById('loginUsername').value = '';
