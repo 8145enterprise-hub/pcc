@@ -1,13 +1,1 @@
-{
-  "users": [
-    {
-      "id": "user-admin-1",
-      "username": "beuser",
-      "password": "Jakarta@12",
-      "createdAt": "2026-08-27T12:00:00.000Z",
-      "joinedRooms": [
-        "channel-1"
-      ]
-    }
-  ]
-}
+
