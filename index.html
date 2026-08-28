@@ -1,3 +1,4 @@
+<!-- BUILD: fix-v2-input-area-min-height -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,12 +46,16 @@
             box-sizing: border-box;
         }
         
+        html {
+            height: 100%;
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--oui-bg-canvas);
             color: var(--oui-text-primary);
             overflow: hidden;
-            min-height: 100vh;
+            height: calc(var(--vh, 1vh) * 100); /* JS-measured real viewport height, avoids Android address-bar crop bug */
             -webkit-font-smoothing: antialiased;
         }
 
@@ -76,12 +81,14 @@
         /* --- Global Layout --- */
         .container {
             width: 100%;
-            height: 100vh;
+            height: calc(var(--vh, 1vh) * 100); /* JS-measured real viewport height, avoids Android address-bar crop bug */
             display: flex;
             flex-direction: column;
             background: transparent;
-            padding: 1rem; /* Margins around the screen for the Samsung Island layout */
+            padding: 1rem;
+            padding-bottom: calc(1rem + env(safe-area-inset-bottom));
             gap: 1rem;
+            box-sizing: border-box;
         }
         
         /* --- Header (One UI Title / Banner style) --- */
@@ -91,6 +98,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-shrink: 0;
             z-index: 10;
         }
         
@@ -185,7 +193,7 @@
             justify-content: center;
             align-items: center;
             width: 100%;
-            height: 100vh;
+            height: calc(var(--vh, 1vh) * 100); /* JS-measured real viewport height, avoids Android address-bar crop bug */
             background: var(--oui-bg-canvas);
             padding: 1.5rem;
         }
@@ -292,7 +300,8 @@
         .main-screen {
             display: flex;
             width: 100%;
-            height: calc(100vh - 100px); /* Fill screen comfortable viewport */
+            flex: 1 1 auto; /* Take remaining space in .container instead of a fragile fixed vh calc */
+            min-height: 0; /* Allow children to shrink and scroll properly instead of overflowing */
             background: transparent;
             gap: 1rem;
         }
@@ -300,6 +309,8 @@
         /* --- Sidebar Island --- */
         .sidebar {
             width: 300px;
+            flex-shrink: 0;
+            min-height: 0;
             background: var(--oui-bg-card);
             border-radius: var(--oui-radius-container);
             border: 1px solid var(--oui-border-light);
@@ -412,6 +423,7 @@
         /* --- Chat Area Island --- */
         .chat-area {
             flex: 1;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             background: var(--oui-bg-card);
@@ -429,6 +441,7 @@
             font-size: 1.15rem;
             display: flex;
             align-items: center;
+            flex-shrink: 0;
             gap: 0.6rem;
         }
 
@@ -440,6 +453,7 @@
         /* --- Messages Panel --- */
         .messages-container {
             flex: 1;
+            min-height: 0; /* Critical: without this, long chat content pushes .input-area out of view */
             overflow-y: auto;
             padding: 1.75rem 2.25rem;
             display: flex;
@@ -506,6 +520,7 @@
             background: rgba(25, 25, 28, 0.4);
             border-top: 1px solid var(--oui-border-light);
             display: flex;
+            flex-shrink: 0;
             gap: 0.75rem;
         }
         
@@ -535,6 +550,12 @@
         .input-area button {
             padding: 0.85rem 1.75rem;
             border-radius: var(--oui-radius-pill);
+            background: var(--oui-accent-green);
+            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.25);
+        }
+
+        .input-area button:hover {
+            box-shadow: 0 6px 18px rgba(52, 199, 89, 0.35);
         }
         
         /* --- Modals --- */
@@ -637,7 +658,7 @@
             .container {
                 padding: 0.5rem;
                 gap: 0.5rem;
-                height: 100vh;
+                height: calc(var(--vh, 1vh) * 100); /* JS-measured real viewport height, avoids Android address-bar crop bug */
             }
 
             .header {
@@ -660,7 +681,8 @@
             }
 
             .main-screen {
-                height: calc(100vh - 105px); /* Fit comfortable mobile viewport height */
+                flex: 1 1 auto; /* Fit remaining viewport height automatically, no fragile fixed calc */
+                min-height: 0;
                 gap: 0;
                 position: relative;
             }
@@ -731,7 +753,18 @@
 
             .input-area {
                 padding: 0.75rem 1rem;
+                padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
                 gap: 0.5rem;
+                flex-wrap: nowrap;
+            }
+
+            .input-area input {
+                min-width: 0; /* Allow input to shrink so Send button always stays visible */
+            }
+
+            .input-area button {
+                flex-shrink: 0;
+                white-space: nowrap;
             }
 
             .input-area input {
@@ -897,6 +930,20 @@
         </div>
     </div>
 
+    <script>
+        // ===== REAL VIEWPORT HEIGHT FIX (mobile browser address-bar crop workaround) =====
+        // Some mobile browsers (especially when opening local files via content:// URIs)
+        // don't correctly recompute 100vh/100dvh when the address bar shows/hides,
+        // causing bottom content (like the send button) to be cropped off-screen.
+        // This measures the real visible height in JS and exposes it as --vh.
+        function setRealViewportHeight() {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        setRealViewportHeight();
+        window.addEventListener('resize', setRealViewportHeight);
+        window.addEventListener('orientationchange', () => setTimeout(setRealViewportHeight, 100));
+    </script>
     <script>
         // ===== CONFIG =====
         const HARDCODED_ADMIN = {
